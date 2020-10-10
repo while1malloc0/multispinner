@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
+
+	"github.com/while1malloc0/multispinner"
 )
 
 const (
@@ -24,7 +25,7 @@ func CursorForward(n int) string {
 	return fmt.Sprintf("\x1b[%dC", n)
 }
 
-type line struct {
+type row struct {
 	status  string
 	message string
 }
@@ -39,47 +40,33 @@ func nextTickerChar() string {
 }
 
 func main() {
-	lines := []*line{}
 	messages := []string{
 		"Testing 1",
 		"Test 2",
 		"Testing 3",
 	}
+	spinner := multispinner.NewSpinner()
+	rows := []*multispinner.Row{}
 
 	for _, message := range messages {
-		lines = append(lines, &line{message: message, status: statusPending})
+		row := spinner.AddRow(message)
+		rows = append(rows, row)
 	}
 
-	ticker := time.NewTicker(200 * time.Millisecond)
-	// First print
-	for i := range lines {
-		fmt.Fprintf(os.Stdout, "%s %s: %s\n", nextTickerChar(), lines[i].message, lines[i].status)
-	}
-	go func(lines []*line) {
-		for {
-			<-ticker.C
-			for i := range lines {
-				fmt.Fprint(os.Stdout, UpLine)
-				fmt.Fprintf(os.Stdout, CursorForward(len(lines[i].message)+len(lines[i].status)+padding))
-				fmt.Fprintf(os.Stdout, DeleteLine)
-			}
-			fmt.Fprint(os.Stdout, CursorStartLine)
-			tc := nextTickerChar()
-			for i := range lines {
-				fmt.Fprintf(os.Stdout, "%s %s: %s\n", tc, lines[i].message, lines[i].status)
-			}
-		}
-	}(lines)
-	timeout := time.After(10 * time.Second)
+	spinner.Start()
+	timeout := time.After(3 * time.Second)
 	<-timeout
-	for i := range lines {
-		lines[i].status = statusSuccess
+	for i := range rows {
+		rows[i].Message = "Success message"
 	}
-	timeout = time.After(10 * time.Second)
+	spinner.AddRow("Another row!")
+	timeout = time.After(3 * time.Second)
 	<-timeout
-	for i := range lines {
-		lines[i].status = statusFailure
+	for i := range rows {
+		rows[i].Message = "Failure message"
 	}
-	timeout = time.After(10 * time.Second)
+	spinner.AddRow("And another row!")
+	timeout = time.After(3 * time.Second)
 	<-timeout
+	spinner.Stop()
 }
